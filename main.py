@@ -74,6 +74,25 @@ class ConfigController:
             "if [ -n \"$orphans\" ]; then pacman -D --asexplicit $orphans; fi"
         ])
         libcalamares.utils.debug("Package marking completed.")
+        
+    # ---------------------------------------------------------
+    # LOCALE FIX (CRÍTICO)
+    # ---------------------------------------------------------
+    def set_system_locale(self):
+        locale = libcalamares.globalstorage.value("locale")
+
+        if not locale:
+            libcalamares.utils.debug(
+                "No locale set in globalstorage, skipping localectl."
+            )
+            return
+
+        lang = f"{locale}.UTF-8"
+        libcalamares.utils.debug(f"Setting system locale to {lang}")
+
+        target_env_call([
+            "localectl", "set-locale", f"LANG={lang}"
+        ])
 
     # ---------------------------------------------------------
     # MICROCODE FIX
@@ -110,6 +129,8 @@ class ConfigController:
 
         # Mark orphan packages
         self.mark_orphans_as_explicit()
+        
+        self.set_system_locale()
 
         # --- Snapper config (CORRECTO) ---
         if exists(join(self.root, "usr/bin/snapper")):
@@ -118,6 +139,7 @@ class ConfigController:
             ])
             target_env_call(["systemctl", "enable", "snapper-timeline.timer"])
             target_env_call(["systemctl", "enable", "snapper-cleanup.timer"])
+            target_env_call(["systemctl", "enable", "grub-btrfsd.service"])
 
         return None
 
